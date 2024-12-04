@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>子育て相談サイト - 研究用</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600&display=swap">
+    <style>
+        body {
+            background-color: #f0f4f8;
+            font-family: 'Nunito', sans-serif;
+            color: #424242;
+        }
+
+        /* 同意画面のスタイル */
+        #consent-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;  /* centerから変更 */
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 2rem 0;         /* 上下のパディングを追加 */
+        }
+
+        #consent-box {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            max-width: 600px;
+            width: 100%;
+            margin: auto;           /* 上下のマージンを追加 */
+            margin-top: 0;         /* 上部マージンを0に */
+        }
+        /* コンテンツ部分を包む新しいdivを追加することを推奨 */
+        .consent-content {
+            overflow-y: auto;       /* スクロール可能に */
+            max-height: 60vh;       /* 適度な高さに制限 */
+            padding-right: 1rem;    /* スクロールバー分の余白 */
+        }
+
+        .consent-button-container {
+            margin-top: 2rem;
+            text-align: center;
+        }
+
+        #consent-button {
+            padding: 0.75rem 2.5rem;
+            font-size: 1.1rem;
+            display: inline-block;
+        }
+
+        /* モバイル向けの追加調整 */
+        @media (max-width: 768px) {
+            #consent-overlay {
+                padding-bottom: 340px; /* モバイルでの下部余白を増やす */
+            }
+            
+            #consent-box {
+                margin: 10px auto; /* モバイルでのマージンを調整 */
+            }
+        }
+
+
+
+
+
+        #main-content {
+            display: none;
+            padding-top: 70px;
+        }
+
+        /* ナビゲーション */
+        .navbar {
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            color: #546e7a;
+        }
+
+        /* チャットエリア */
+        #chatContainer {
+            height: 400px;
+            overflow-y: auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .user-message, .ai-message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 90%;
+            word-wrap: break-word;
+        }
+
+        .user-message {
+            background-color: #dcedc8;
+            margin-left: auto;
+        }
+
+        .ai-message {
+            background-color: #f0f4c3;
+            margin-right: auto;
+        }
+
+        /* 入力エリア */
+        .input-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        #questionInput {
+            flex: 1;
+            padding: 12px 20px;
+            border: 1px solid #b0bec5;
+            border-radius: 30px;
+            font-size: 1rem;
+        }
+
+        #questionInput:focus {
+            outline: none;
+            border-color: #80cbc4;
+            box-shadow: 0 0 0 2px rgba(128, 203, 196, 0.2);
+        }
+
+        /* ボタンスタイル */
+        .btn-primary {
+            background-color: #80cbc4;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 30px;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background-color: #4db6ac;
+        }
+
+        .btn-secondary {
+            background-color: #b0bec5;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 30px;
+        }
+
+        .btn-secondary:hover {
+            background-color: #90a4ae;
+        }
+
+        /* 評価ボタン */
+        #binary-rating {
+            margin-top: 20px;
+        }
+
+        .rating-button {
+            background: none;
+            border: 2px solid;
+            padding: 10px 20px;
+            margin: 0 10px;
+            border-radius: 30px;
+            font-size: 1.2rem;
+        }
+
+        /* アンケートフォーム */
+        #survey-form {
+            margin-top: 40px;
+        }
+
+        .btn-group {
+            min-width: 100%;
+            overflow-x: auto;
+            flex-wrap: nowrap !important;
+        }
+
+        .btn-group .btn {
+            white-space: nowrap;
+            min-width: max-content;
+            flex: 1;
+        }
+
+        .btn-check:checked + .btn-outline-primary {
+            background-color: #0d6efd;
+            color: white;
+        }
+
+
+        /* 評価ボタンのスタイル */
+        .rating-buttons {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .rating-buttons label {
+            flex: 1;
+            text-align: center;
+            font-size: 0.9rem;
+            padding: 8px 4px;
+            white-space: normal;
+            height: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 80px;
+        }
+
+        .btn-check:checked + .btn-outline-primary {
+            background-color: #0d6efd;
+            color: white;
+        }
+
+
+        /* スマートフォン向けの調整 */
+        @media (max-width: 576px) {
+            .rating-buttons label {
+                font-size: 0.8rem;
+                padding: 4px 2px;
+            }
+        }
+
+        /* レスポンシブ対応 */
+        .survey-item {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+
+        
+
+        /* フッター */
+        footer {
+            margin-top: 50px;
+            padding: 20px 0;
+            background-color: #f0f4f8;
+            text-align: center;
+            font-size: 0.9rem;
+            color: #546e7a;
+        }
+
+        /* レスポンシブ対応 */
+        @media (max-width: 768px) {
+            .btn-group {
+                flex-wrap: wrap;
+            }
+            
+            .btn-group .btn {
+                min-width: 100%;
+                margin-bottom: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 同意画面 -->
+    <div id="consent-overlay">
+        <div id="consent-box">
+          <h2 class="mb-4">研究参加の同意書7</h2>
+      
+          <p>本アンケートは、育児のご経験や専門の知識を有する方々の貴重な意見を集め、子育て支援AIチャットボット「ククちゃん」の開発に生かすことを目的としています。ぜひご協力をお願いいたします！</p>
+    
+
+          <ul class="mb-4">
+            <li>本研究は電気通信大学 人工知能先端研究センターが実施しています。</li>
+            <li>皆様から提供いただいた情報は、最大限の注意を払って適切に管理し、厳重に保護いたします。</li>
+            <li>収集したデータは研究目的にのみ使用され、個人を特定できる情報が含まれていた場合でも、それらが外部に漏れることは一切ございません。</li>
+            <li>研究成果は学術論文等で公表される可能性がありますが、個人を特定できる情報は含まれません。</li>
+            <li>本システムで提供される情報は参考情報です。医療や専門的なアドバイスが必要な場合は、専門家にご相談ください。</li>
+          </ul>
+
+
+          <div class="study-flow mb-4">
+            <h3 class="mb-3">研究の流れ</h3>
+            <ol class="flow-list mb-4">
+              <li>ククちゃんに子育ての相談や質問をしていただきます。</li>
+              <li>会話が終わりましたら、「チャットを終わる」ボタンを押してください。</li>
+              <li>その後表示される最終アンケートにご回答ください。</li>
+            </ol>
+            <p class="time-notice">所要時間はおよそ5~10分です。<br>よろしければ何パターンか会話を評価して頂きたく思います。</p>
+          </div>
+      
+
+          <p class="mb-4">調査責任者：粕谷<br>
+
+            
+          電気通信大学 人工知能先端研究センター<br>
+          調査担当：平尾・阿部<br>
+          研究協力　ChiCaRo社<br>
+          連絡先：s_hirao@radish.ee.uec.ac.jp</p>
+      
+          <div class="consent-button-container">
+            <button id="consent-button" class="btn btn-primary">同意して始める</button>
+        </div>
+        </div>
+      </div>
+      
+      <div id="main-content">
+        <div class="container-lg">
+            <!-- <nav class="navbar">
+                <span class="navbar-brand">ククちゃん - 子育て支援AIチャットボット研究</span>
+            </nav>
+     -->
+            <div class="text-center mb-4">
+                <h1 class="mb-3">ククちゃん</h1>
+                <p>
+                    ククちゃんは子育て支援を目的として開発中のAIチャットボットです。<br>
+                    子育てに関する質問や相談をお寄せいただき、システムの評価にご協力ください。
+                </p>
+            </div>
+            <div class="row justify-content-center">
+                <div class="col-md-10">
+                    <div class="card">
+                        <div class="card-body">
+                            <!-- チャットコンテナ -->
+                            <div id="chatContainer"></div>
+                            
+                            <!-- 入力エリア -->
+                            <div class="input-container">
+                                <input type="text" id="questionInput" placeholder="質問を入力してください">
+                                <button id="sendQuestion" class="btn btn-primary">送信</button>
+                                <!-- <button id="resetChat" class="btn btn-secondary">リセット</button> -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 評価ボタン -->
+                    <div id="binary-rating" class="text-center mt-4" style="display: none;">
+                        <p class="mb-3">この回答を評価してください？評価すると次のチャットを送ることができます。</p>
+                        <div>
+                            <button class="rating-button text-success" data-rating="good">
+                                👍<br><span style="font-size: 0.9rem;">Good</span>
+                            </button>
+                            <button class="rating-button text-danger" data-rating="bad">
+                                👎<br><span style="font-size: 0.9rem;">Bad</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <button type="button" class="btn btn-secondary mt-4" id="endChat">チャットを終わる</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- アンケートフォーム -->
+            <!-- アンケートフォームの部分 -->
+            <div id="survey-form" class="mt-5" style="display: none;">
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="card-title text-center mb-4">最終アンケート</h3>
+                        
+                        <div class="survey-item mb-4">
+                            <p class="mb-2">1. 今回の一連の会話に対しての満足度を教えてください：</p>
+                            <div class="rating-buttons" role="group" aria-label="満足度">
+                                <input type="radio" class="btn-check" name="satisfaction" id="satisfaction1" value="1">
+                                <label class="btn btn-outline-primary" for="satisfaction1">1<br>不満</label>
+                                
+                                <input type="radio" class="btn-check" name="satisfaction" id="satisfaction2" value="2">
+                                <label class="btn btn-outline-primary" for="satisfaction2">2<br>やや不満</label>
+                                
+                                <input type="radio" class="btn-check" name="satisfaction" id="satisfaction3" value="3">
+                                <label class="btn btn-outline-primary" for="satisfaction3">3<br>普通</label>
+                                
+                                <input type="radio" class="btn-check" name="satisfaction" id="satisfaction4" value="4">
+                                <label class="btn btn-outline-primary" for="satisfaction4">4<br>やや満足</label>
+                                
+                                <input type="radio" class="btn-check" name="satisfaction" id="satisfaction5" value="5">
+                                <label class="btn btn-outline-primary" for="satisfaction5">5<br>満足</label>
+                            </div>
+                        </div>
+
+                        <div class="survey-item mb-4">
+                            <p class="mb-2">2. あなたに合った回答ができていましたか：</p>
+                            <div class="rating-buttons" role="group" aria-label="個別化された回答">
+                                <input type="radio" class="btn-check" name="personalization" id="personalization1" value="1">
+                                <label class="btn btn-outline-primary" for="personalization1">1<br>できていない</label>
+                                
+                                <input type="radio" class="btn-check" name="personalization" id="personalization2" value="2">
+                                <label class="btn btn-outline-primary" for="personalization2">2<br>やや<br>できていない</label>
+                                
+                                <input type="radio" class="btn-check" name="personalization" id="personalization3" value="3">
+                                <label class="btn btn-outline-primary" for="personalization3">3<br>普通</label>
+                                
+                                <input type="radio" class="btn-check" name="personalization" id="personalization4" value="4">
+                                <label class="btn btn-outline-primary" for="personalization4">4<br>やや<br>できていた</label>
+                                
+                                <input type="radio" class="btn-check" name="personalization" id="personalization5" value="5">
+                                <label class="btn btn-outline-primary" for="personalization5">5<br>できていた</label>
+                            </div>
+                        </div>
+
+                        <div class="survey-item mb-4">
+                            <p class="mb-2">3. 従来のくくちゃんに比べて、新しいくくちゃんはどうでしたか：</p>
+                            <div class="rating-buttons" role="group" aria-label="比較">
+                                <input type="radio" class="btn-check" name="comparison" id="comparison0" value="0">
+                                <label class="btn btn-outline-primary" for="comparison0">0<br>従来のくくちゃんを<br>使ったことがない</label>
+                                
+                                <input type="radio" class="btn-check" name="comparison" id="comparison1" value="1">
+                                <label class="btn btn-outline-primary" for="comparison1">1<br>従来より<br>悪い</label>
+                                
+                                <input type="radio" class="btn-check" name="comparison" id="comparison2" value="2">
+                                <label class="btn btn-outline-primary" for="comparison2">2<br>従来より<br>やや悪い</label>
+                                
+                                <input type="radio" class="btn-check" name="comparison" id="comparison3" value="3">
+                                <label class="btn btn-outline-primary" for="comparison3">3<br>同じ<br>くらい</label>
+                                
+                                <input type="radio" class="btn-check" name="comparison" id="comparison4" value="4">
+                                <label class="btn btn-outline-primary" for="comparison4">4<br>従来より<br>やや良い</label>
+                                
+                                <input type="radio" class="btn-check" name="comparison" id="comparison5" value="5">
+                                <label class="btn btn-outline-primary" for="comparison5">5<br>従来より<br>良い</label>
+                            </div>
+                        </div>
+
+                        <div class="survey-item mb-4">
+                            <p class="mb-2">4. あなたの質問の意図に沿って返答されていましたか：</p>
+                            <div class="rating-buttons" role="group" aria-label="意図の理解">
+                                <input type="radio" class="btn-check" name="intention" id="intention1" value="1">
+                                <label class="btn btn-outline-primary" for="intention1">1<br>できていない</label>
+                                
+                                <input type="radio" class="btn-check" name="intention" id="intention2" value="2">
+                                <label class="btn btn-outline-primary" for="intention2">2<br>やや<br>できていない</label>
+                                
+                                <input type="radio" class="btn-check" name="intention" id="intention3" value="3">
+                                <label class="btn btn-outline-primary" for="intention3">3<br>普通</label>
+                                
+                                <input type="radio" class="btn-check" name="intention" id="intention4" value="4">
+                                <label class="btn btn-outline-primary" for="intention4">4<br>やや<br>できていた</label>
+                                
+                                <input type="radio" class="btn-check" name="intention" id="intention5" value="5">
+                                <label class="btn btn-outline-primary" for="intention5">5<br>できていた</label>
+                            </div>
+                        </div>
+
+                        
+                        <!-- 新しい項目を追加 -->
+                        <div class="survey-item mb-4">
+                            <p class="mb-2">5. あなたの年代を教えてください：</p>
+                            <div class="rating-buttons" role="group" aria-label="年代">
+                                <input type="radio" class="btn-check" name="age" id="age1" value="20">
+                                <label class="btn btn-outline-primary" for="age1">20代</label>
+                                
+                                <input type="radio" class="btn-check" name="age" id="age2" value="30">
+                                <label class="btn btn-outline-primary" for="age2">30代</label>
+                                
+                                <input type="radio" class="btn-check" name="age" id="age3" value="40">
+                                <label class="btn btn-outline-primary" for="age3">40代</label>
+                                
+                                <input type="radio" class="btn-check" name="age" id="age4" value="50">
+                                <label class="btn btn-outline-primary" for="age4">50代</label>
+                                
+                                <input type="radio" class="btn-check" name="age" id="age5" value="60">
+                                <label class="btn btn-outline-primary" for="age5">60代</label>
+                            </div>
+                        </div>
+            
+                        <div class="survey-item mb-4">
+                            <p class="mb-2">6. あなたの性別を教えてください：</p>
+                            <div class="rating-buttons" role="group" aria-label="性別">
+                                <input type="radio" class="btn-check" name="gender" id="gender1" value="female">
+                                <label class="btn btn-outline-primary" for="gender1">女性</label>
+                                
+                                <input type="radio" class="btn-check" name="gender" id="gender2" value="male">
+                                <label class="btn btn-outline-primary" for="gender2">男性</label>
+                                
+                                <input type="radio" class="btn-check" name="gender" id="gender3" value="noanswer">
+                                <label class="btn btn-outline-primary" for="gender3">無回答</label>
+                            </div>
+                        </div>
+            
+                        <div class="survey-item mb-4">
+                            <p class="mb-2">7. あなたのお子さんと関わる経験・ご職業を教えてください：</p>
+                            <div class="rating-buttons" role="group" aria-label="職業">
+                                <input type="radio" class="btn-check" name="occupation" id="occ1" value="nursery">
+                                <label class="btn btn-outline-primary" for="occ1">保育士</label>
+                                
+                                <input type="radio" class="btn-check" name="occupation" id="occ2" value="kindergarten">
+                                <label class="btn btn-outline-primary" for="occ2">幼稚園教諭</label>
+                                
+                                <input type="radio" class="btn-check" name="occupation" id="occ3" value="pediatrician">
+                                <label class="btn btn-outline-primary" for="occ3">小児科医</label>
+                                
+                                <input type="radio" class="btn-check" name="occupation" id="occ4" value="nutritionist">
+                                <label class="btn btn-outline-primary" for="occ4">栄養士</label>
+                                
+                                <input type="radio" class="btn-check" name="occupation" id="occ5" value="psychologist">
+                                <label class="btn btn-outline-primary" for="occ5">臨床心理士</label>
+                                
+                                <input type="radio" class="btn-check" name="occupation" id="occ6" value="socialworker">
+                                <label class="btn btn-outline-primary" for="occ6">社会福祉士</label>
+                                
+                                <input type="radio" class="btn-check" name="occupation" id="occ7" value="educator">
+                                <label class="btn btn-outline-primary" for="occ7">教育学者</label>
+                                
+                                <input type="radio" class="btn-check" name="occupation" id="occ8" value="developmental">
+                                <label class="btn btn-outline-primary" for="occ8">発達心理学者</label>
+                                
+                                <input type="radio" class="btn-check" name="occupation" id="occ9" value="support">
+                                <label class="btn btn-outline-primary" for="occ9">子育て支援センター</label>
+                                
+                                <input type="radio" class="btn-check" name="occupation" id="occ10" value="parent">
+                                <label class="btn btn-outline-primary" for="occ10">保護者</label>
+                         
+                                <input type="radio" class="btn-check" name="occupation" id="occ11" value="none">
+                                <label class="btn btn-outline-primary" for="occ11">特になし</label>
+                            </div>
+                         </div>
+            
+                        <div class="survey-item mb-4">
+                            <p class="mb-2">8. 前述で回答いただいた経験・ご職業の継続年数を教えてください：</p>
+                            <div class="rating-buttons" role="group" aria-label="経験年数">
+                                <input type="radio" class="btn-check" name="experience" id="exp1" value="less1">
+                                <label class="btn btn-outline-primary" for="exp1">1年未満</label>
+                                
+                                <input type="radio" class="btn-check" name="experience" id="exp2" value="1year">
+                                <label class="btn btn-outline-primary" for="exp2">1年</label>
+                                
+                                <input type="radio" class="btn-check" name="experience" id="exp3" value="2year">
+                                <label class="btn btn-outline-primary" for="exp3">2年</label>
+                                
+                                <input type="radio" class="btn-check" name="experience" id="exp4" value="3year">
+                                <label class="btn btn-outline-primary" for="exp4">3年</label>
+                                
+                                <input type="radio" class="btn-check" name="experience" id="exp5" value="4to9">
+                                <label class="btn btn-outline-primary" for="exp5">4~9年</label>
+                                
+                                <input type="radio" class="btn-check" name="experience" id="exp6" value="10to14">
+                                <label class="btn btn-outline-primary" for="exp6">10~14年</label>
+                                
+                                <input type="radio" class="btn-check" name="experience" id="exp7" value="15to19">
+                                <label class="btn btn-outline-primary" for="exp7">15~19年</label>
+                                
+                                <input type="radio" class="btn-check" name="experience" id="exp8" value="20to29">
+                                <label class="btn btn-outline-primary" for="exp8">20~29年</label>
+                                
+                                <input type="radio" class="btn-check" name="experience" id="exp9" value="30plus">
+                                <label class="btn btn-outline-primary" for="exp9">30年以上</label>
+                            </div>
+                        </div>
+            
+                        <div class="survey-item mb-4">
+                            <p class="mb-2">9. ご意見・ご感想がありましたら自由にお書きください：</p>
+                            <textarea id="feedback" class="form-control" rows="4"></textarea>
+                        </div>
+            
+                        <div class="text-center">
+                            <button id="submitSurvey" class="btn btn-primary">アンケートを送信</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        <!-- フッター -->
+        <footer>
+            <div class="container-lg">
+                <p class="mb-0"> © 2024 電気通信大学 人工知能先端研究センター</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Firebase -->
+    <script type="module" src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"></script>
+    
+    <!-- メインスクリプト -->
+    <script type="module" src="/scripts/frontend-chat.js"></script>
+
+    <!-- Bootstrap -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- 同意画面の制御 -->
+    <script>
+        document.getElementById('consent-button').addEventListener('click', function() {
+            document.getElementById('consent-overlay').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+        });
+    </script>
+</body>
+</html>

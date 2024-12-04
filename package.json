@@ -1,0 +1,20 @@
+{
+  "name": "hirao-kukutyann",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "firebase": "^11.0.2",
+    "node-fetch": "^3.3.2",
+    "firebase-admin": "^11.11.0",
+    "@firebase/firestore": "^4.4.0"
+  },
+  "devDependencies": {
+    "firebase-tools": "^13.0.2"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "firebase-init": "firebase init",
+    "firebase-deploy": "firebase deploy",
+    "firebase-serve": "firebase serve"
+  }
+}

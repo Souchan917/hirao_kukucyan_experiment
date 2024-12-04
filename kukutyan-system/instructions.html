@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BRAIN</title>
+    <style>
+        :root {
+            --primary: #e0e0e0; /* 背景色を少しグレーに */
+            --accent: #FF6A8B; /* アクセントカラーも少し落ち着かせたピンクに */
+            --chaos1: #6AA9D1; /* 青を少し暗く */
+            --chaos2: #D8D8F0; /* ラベンダーを落ち着かせた色に */
+            --glitch: #FF88A0; /* グリッチのピンクも少し控えめに */
+        }
+
+        @keyframes chaosBackground {
+            0% { background-position: 0% 0%; }
+            25% { background-position: 100% 0%; }
+            50% { background-position: 100% 100%; }
+            75% { background-position: 0% 100%; }
+            100% { background-position: 0% 0%; }
+        }
+
+        @keyframes glitchText {
+            0% { 
+                transform: translate(0) skew(0deg);
+                text-shadow: -2px 0 var(--chaos1), 2px 2px var(--chaos2);
+            }
+            20% { 
+                transform: translate(-2px, 2px) skew(2deg);
+                text-shadow: 2px 0 var(--chaos2), -2px -2px var(--chaos1);
+            }
+            40% { 
+                transform: translate(2px, -2px) skew(-2deg);
+                text-shadow: -2px 0 var(--glitch), 2px 2px var(--chaos1);
+            }
+            60% { 
+                transform: translate(-2px) skew(1deg);
+                text-shadow: 2px 0 var(--chaos1), -2px -2px var(--glitch);
+            }
+            80% { 
+                transform: translate(2px, 2px) skew(-1deg);
+                text-shadow: -2px 0 var(--chaos2), 2px 2px var(--chaos1);
+            }
+            100% { 
+                transform: translate(0) skew(0deg);
+                text-shadow: -2px 0 var(--chaos1), 2px 2px var(--chaos2);
+            }
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--primary);
+            color: #333;
+            font-family: "Helvetica Neue", monospace;
+            cursor: crosshair;
+            overflow-x: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(
+                45deg,
+                #f0f0f0,
+                #e6e6fa,
+                #f0f8ff,
+                #fff0f5
+            );
+            background-size: 400% 400%;
+            animation: chaosBackground 15s ease infinite;
+        }
+
+        .content-container {
+            width: 90%;
+            max-width: 1200px;
+            text-align: center;
+            position: relative;
+            padding: 2rem;
+            z-index: 2;
+            margin-top: 90px;
+        }
+
+        .chaos-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 10px,
+                rgba(135, 206, 235, 0.1) 10px,
+                rgba(135, 206, 235, 0.1) 20px
+            );
+            pointer-events: none;
+            mix-blend-mode: overlay;
+            z-index: 1;
+        }
+
+        .title {
+            font-size: clamp(3rem, 15vw, 10rem);
+            font-weight: 900;
+            margin: 0;
+            line-height: 0.9;
+            animation: glitchText 3s infinite;
+            letter-spacing: -0.05em;
+            filter: drop-shadow(0 0 5px var(--accent));
+            color: #333;
+        }
+
+        .subtitle {
+            font-size: clamp(1rem, 4vw, 2rem);
+            margin: 2rem 0;
+            opacity: 0.8;
+            font-family: 'Courier New', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.5em;
+            animation: glitchText 4s infinite;
+            color: #444;
+        }
+
+        .description {
+        font-size: clamp(1rem, 2vw, 1.2rem);
+        line-height: 1.8;
+        margin: 2rem auto;
+        max-width: 800px;
+        padding: 2rem;
+        background: rgba(255, 255, 255, 0.9); /* 背景を少し濃くしてコントラストを強化 */
+        color: #222; /* テキスト色をより濃いグレーに */
+        border: 1px solid rgba(135, 206, 235, 0.5);
+        border-radius: 10px; /* 少し丸みを追加 */
+        backdrop-filter: blur(8px);
+        position: relative;
+    }
+
+        .description p {
+            margin: 0.5rem 0; /* 各段落の間隔を広げて読みやすさを向上 */
+        }
+
+        .description::before {
+            content: 'BRAIN_LOG_//:';
+            position: absolute;
+            top: -1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1rem;
+            color: var(--accent);
+            font-family: monospace;
+            background-color: #ffffff;
+            padding: 0 0.5rem;
+            border-radius: 5px;
+        }
+
+        .start-button {
+            font-size: clamp(1.2rem, 3vw, 2rem);
+            padding: 1rem 3rem;
+            background: transparent;
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 2rem auto; /* 上下のマージンと中央揃え */
+            position: relative;
+            overflow: hidden;
+            font-family: monospace;
+            text-transform: uppercase;
+            display: block; /* ブロック要素として表示 */
+        }
+
+        .start-button::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            background: linear-gradient(45deg, var(--chaos1), var(--chaos2));
+            z-index: -1;
+            transition: all 0.3s;
+            opacity: 0;
+        }
+
+        .start-button:hover {
+            color: #333;
+            border-color: transparent;
+        }
+
+        .start-button:hover::before {
+            opacity: 1;
+        }
+
+        @media (max-width: 768px) {
+            .content-container {
+                padding: 1rem;
+            }
+
+            .description {
+                padding: 1.5rem;
+                margin: 1.5rem auto;
+            }
+        }
+
+        .bgm-container {
+            margin: 2rem 0;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(135, 206, 235, 0.5);
+            border-radius: 10px;
+            backdrop-filter: blur(8px);
+        }
+
+        .bgm-button {
+            background: transparent;
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            font-size: 1.2rem;
+            padding: 0.5rem 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: none; /* ブロック要素として表示 */
+            margin: 1rem auto; /* 上下のマージンと中央揃え */
+            align-items: center;
+            gap: 8px;
+        }
+
+        .bgm-button.playing {
+            background: var(--accent);
+            color: white;
+        }
+
+        .back-button {
+            font-size: 1rem;
+            padding: 0.8rem 2rem;
+            background: transparent;
+            border: 2px solid var(--chaos1);
+            color: var(--chaos1);
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: monospace;
+            text-transform: uppercase;
+            margin: 4rem auto 2rem; /* 上下のマージンと中央揃え */
+            display: block; /* ブロック要素として表示 */
+        }
+        /* ボタンを配置するための新しいコンテナ */
+        .button-container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            text-align: left; /* 左寄せ */
+        }
+
+        .back-button:hover {
+            background: var(--chaos1);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="chaos-overlay"></div>
+
+    <div class="content-container">
+        <h1 class="title">BRAIN</h1>
+        <div class="subtitle">Web Riddle Challenge</div>
+        
+        <div class="description">
+            <p>&lt;p&gt;この度、WEB謎を完全に理解してしまいました。&lt;/p&gt;</p>
+
+            <hr style="border: none; border-top: 1px solid rgba(135, 206, 235, 0.3); margin: 20px 0;">
+
+            <p><strong>&lt;strong&gt;概要&lt;/strong&gt;</strong> <br>&lt;p&gt;私は今回、ある大胆な挑戦を試みました。それは「ブラインドコーディング」です。&lt;/p&gt;</p>
+
+            <p>&lt;p&gt;「ブラインドコーディング」といえば作っているサイトを確認することなくプログラムだけを見て構築することです。&lt;/p&gt;</p>
+            
+            <p>&lt;p&gt;WEBを完全に理解した私は、仲間たちと共にWEB謎を仕上げましたがこれまで一度たりともサイトを開いていません。&lt;/p&gt;</p>
+
+            <p>&lt;p&gt;しかし、私達は完全に理解しているので問題なく動作するはずです。あなたの挑戦をお待ちしています！&lt;/p&gt;</p>
+
+            <hr style="border: none; border-top: 1px solid rgba(135, 206, 235, 0.3); margin: 20px 0;">
+
+            <p><strong>&lt;strong&gt;制作者&lt;/strong&gt;</strong> <br>&lt;p&gt;そうた</strong> &amp; 仲間たち&lt;/p&gt;</p>
+
+            <hr style="border: none; border-top: 1px solid rgba(135, 206, 235, 0.3); margin: 20px 0;">
+
+            <p><strong>&lt;strong&gt;クリア条件&lt;/strong&gt;</strong> <br>&lt;p&gt;クリア条件は最終問題に正解することです&lt;/p&gt;</p>
+
+            <hr style="border: none; border-top: 1px solid rgba(135, 206, 235, 0.3); margin: 20px 0;">
+
+            <p><strong>&lt;strong&gt;音声&lt;/strong&gt;</strong> <br>&lt;p&gt;一部音声を聞く問題があります。&lt;p&gt;<br>&lt;p&gt;音量にはご注意ください。&lt;p&gt;<br>&lt;p&gt;それとは別にBGMもご用意しております。ぜひBGMのボタンはONでお楽しみ下さい。&lt;/p&gt;</p>
+
+            
+        </div>
+    
+        <button class="bgm-button" id="bgmToggle">
+            <span class="bgm-icon">♪</span>
+            <span class="bgm-status">OFF</span>
+        </button>
+    
+        <button class="start-button" id="startButton">
+            START_CHALLENGE();
+        </button>
+    
+        <button class="back-button" onclick="window.location.href='index.html'">
+            BACK_TO_HOME();
+        </button>
+    </div>
+</div>
+
+    <script>
+        document.getElementById('bgmToggle').disabled = true;
+
+        // グリッチエフェクト
+        setInterval(() => {
+            document.querySelector('.title').style.setProperty(
+                '--glitch-offset', 
+                `${Math.random() * 10 - 5}px`
+            );
+        }, 100);
+
+        // BGM機能
+        const bgmButton = document.getElementById('bgmToggle');
+        let bgm = new Audio('https://souchan917.github.io/webnazorikaishita/assets/audio/Q4_BGM.mp3');
+        bgm.loop = true;
+
+        // ページ読み込み時にBGM状態を復元
+        document.addEventListener('DOMContentLoaded', () => {
+            const isBgmPlaying = localStorage.getItem('bgmPlaying') === 'true';
+
+            if (isBgmPlaying) {
+                bgm.play().catch(error => {
+                    console.log('BGM再生エラー:', error);
+                });
+                bgmButton.classList.add('playing');
+                bgmButton.querySelector('.bgm-status').textContent = 'ON';
+            } else {
+                bgmButton.querySelector('.bgm-status').textContent = 'OFF';
+            }
+        });
+
+        // BGMボタンのクリックイベント
+        bgmButton.addEventListener('click', () => {
+            const isPlaying = bgmButton.classList.contains('playing');
+            
+            if (isPlaying) {
+                bgm.pause();
+                bgmButton.classList.remove('playing');
+                bgmButton.querySelector('.bgm-status').textContent = 'OFF';
+                localStorage.setItem('bgmPlaying', 'false');
+            } else {
+                bgm.play().catch(error => {
+                    console.log('BGM再生エラー:', error);
+                });
+                bgmButton.classList.add('playing');
+                bgmButton.querySelector('.bgm-status').textContent = 'ON';
+                localStorage.setItem('bgmPlaying', 'true');
+            }
+        });
+
+        // スタートボタンのイベント
+        document.getElementById('startButton').addEventListener('click', () => {
+            document.body.style.opacity = 0;
+            document.body.style.transform = 'scale(1.5)';
+            setTimeout(() => {
+                window.location.href = '1qXyZ3.html';
+            }, 800);
+        });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // グローバルなオーディオオブジェクトの設定
+        const puzzleAudio = new Audio('https://souchan917.github.io/webnazorikaishita/assets/audio/Q4_nazo.mp3');
+        puzzleAudio.loop = true; // ループ再生設定
+
+        // 再生ボタンとプログレスバーの要素を取得（存在しない場合も考慮）
+        const playButton = document.getElementById('playPuzzleAudio');
+        const progressBar = document.getElementById('progressBar');
+        const timeDisplay = document.getElementById('timeDisplay');
+
+        // ページ読み込み時に音声の進行具合と再生状態を復元
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTime = parseFloat(localStorage.getItem('puzzleAudioCurrentTime')) || 0;
+            const isPlaying = localStorage.getItem('puzzleAudioIsPlaying') === 'true';
+
+            // 保存された位置から再生を開始
+            puzzleAudio.currentTime = savedTime;
+
+            // 保存された状態に基づいて再生または停止
+            if (isPlaying) {
+                puzzleAudio.play().catch(error => console.log('再生エラー:', error));
+                if (playButton) playButton.textContent = '❚❚'; // 再生中のアイコン
+            } else {
+                if (playButton) playButton.textContent = '▶︎'; // 停止中のアイコン
+            }
+        });
+
+        // 再生ボタンのクリックイベントを設定（ボタンが存在する場合のみ）
+        if (playButton) {
+            playButton.addEventListener('click', () => {
+                if (!puzzleAudio.paused) {
+                    puzzleAudio.pause();
+                    playButton.textContent = '▶︎'; // 停止中のアイコン
+                    localStorage.setItem('puzzleAudioIsPlaying', 'false'); // 状態を保存
+                } else {
+                    puzzleAudio.play();
+                    playButton.textContent = '❚❚'; // 再生中のアイコン
+                    localStorage.setItem('puzzleAudioIsPlaying', 'true'); // 状態を保存
+                }
+            });
+        }
+
+        // プログレスバーと時間表示を更新し、小まめに再生位置を保存
+        puzzleAudio.addEventListener('timeupdate', () => {
+            const currentTime = puzzleAudio.currentTime;
+            const duration = puzzleAudio.duration;
+
+            // プログレスバーの幅を更新（プログレスバーが存在する場合のみ）
+            if (progressBar) {
+                progressBar.style.width = `${(currentTime / duration) * 100}%`;
+            }
+
+            // 時間をフォーマットして表示（時間表示要素が存在する場合のみ）
+            if (timeDisplay) {
+                timeDisplay.textContent = formatTime(currentTime);
+            }
+
+            // 1秒ごとに再生位置を保存
+            localStorage.setItem('puzzleAudioCurrentTime', currentTime);
+        });
+
+        // 再生終了時にアイコンを初期状態に戻す
+        puzzleAudio.addEventListener('ended', () => {
+            if (playButton) playButton.textContent = '▶︎'; // 停止中のアイコン
+            localStorage.setItem('puzzleAudioIsPlaying', 'false'); // 再生状態を停止に設定
+        });
+
+        // 時間のフォーマット関数
+        function formatTime(seconds) {
+            const min = Math.floor(seconds / 60);
+            const sec = Math.floor(seconds % 60);
+            return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+        }
+    </script>
+
+</body>
+</html>
