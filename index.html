@@ -295,6 +295,7 @@
             line-height: 1.5;
             resize: none;
             transition: border-color 0.3s;
+            overflow-y: hidden; /* 縦スクロールを非表示 */
         }
 
         #questionInput:focus {
@@ -498,6 +499,19 @@
                     <div class="card-body">
                         <h3 class="card-title text-center mb-4">最終アンケート</h3>
                         
+                        <!-- 既存のアンケート項目の前（例えば、満足度の前）に以下を追加 -->
+                        <div class="survey-item mb-4">
+                            <p class="mb-2">1. このサイトでのチャットは何回目ですか：</p>
+                            <div class="rating-buttons" role="group" aria-label="利用回数">
+                                <input type="radio" class="btn-check" name="visitCount" id="visitCount1" value="first">
+                                <label class="btn btn-outline-primary" for="visitCount1">初めて</label>
+                                
+                                <input type="radio" class="btn-check" name="visitCount" id="visitCount2" value="multiple">
+                                <label class="btn btn-outline-primary" for="visitCount2">2回以上</label>
+                            </div>
+                        </div>
+
+
                         <div class="survey-item mb-4">
                             <p class="mb-2">1. 今回の一連の会話に対しての満足度を教えてください：</p>
                             <div class="rating-buttons" role="group" aria-label="満足度">
@@ -519,7 +533,7 @@
                         </div>
 
                         <div class="survey-item mb-4">
-                            <p class="mb-2">2. あなたに合った回答ができていましたか：</p>
+                            <p class="mb-2">2. あなたが求める回答ができていましたか：</p>
                             <div class="rating-buttons" role="group" aria-label="個別化された回答">
                                 <input type="radio" class="btn-check" name="personalization" id="personalization1" value="1">
                                 <label class="btn btn-outline-primary" for="personalization1">1<br>できていない</label>
@@ -562,7 +576,7 @@
                         </div>
 
                         <div class="survey-item mb-4">
-                            <p class="mb-2">4. あなたの質問の意図に沿って返答されていましたか：</p>
+                            <p class="mb-2">4. あなたの質問の意図をくみ取って返答していましたか：</p>
                             <div class="rating-buttons" role="group" aria-label="意図の理解">
                                 <input type="radio" class="btn-check" name="intention" id="intention1" value="1">
                                 <label class="btn btn-outline-primary" for="intention1">1<br>できていない</label>
@@ -618,7 +632,7 @@
                         </div>
             
                         <div class="survey-item mb-4">
-                            <p class="mb-2">7. あなたのお子さんと関わる経験・ご職業を教えてください：</p>
+                            <p class="mb-2">7. あなたのお子さんと関わる経験・ご職業を教えてください(複数の場合は最も長く経験しているもの)：</p>
                             <div class="rating-buttons" role="group" aria-label="職業">
                                 <input type="radio" class="btn-check" name="occupation" id="occ1" value="nursery">
                                 <label class="btn btn-outline-primary" for="occ1">保育士</label>

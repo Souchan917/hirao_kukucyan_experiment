@@ -1,8 +1,14 @@
 // frontend-chat.js
 
-import { saveMessage, getChatHistory } from "../libs/firebase.js";
+import { saveMessage, saveSummaryData } from "../libs/firebase.js";
 
 console.log("=== frontend-chat.js 読み込み開始 ===");
+
+// 定数定義
+const STORAGE_KEYS = {
+    SESSION: 'kukuchan_session_id',
+    SUMMARY: 'kukuchan_chat_summary'
+};
 
 // DOM要素の取得
 const apiUrl = "/api/chat";
@@ -13,8 +19,10 @@ const resetButton = document.getElementById("resetChat");
 const endChatButton = document.getElementById("endChat");
 const surveyForm = document.getElementById("survey-form");
 const submitSurveyButton = document.getElementById("submitSurvey");
+const loadingState = document.getElementById("loading-state");
 
 // 評価ボタングループの取得
+const visitCountButtons = surveyForm.querySelectorAll('input[name="visitCount"]');
 const satisfactionButtons = surveyForm.querySelectorAll('input[name="satisfaction"]');
 const personalizedButtons = surveyForm.querySelectorAll('input[name="personalization"]');
 const comparisonButtons = surveyForm.querySelectorAll('input[name="comparison"]');
@@ -25,131 +33,76 @@ const occupationButtons = surveyForm.querySelectorAll('input[name="occupation"]'
 const experienceButtons = surveyForm.querySelectorAll('input[name="experience"]');
 const feedbackTextarea = document.getElementById('feedback');
 
-// セッション管理用の定数
-const SESSION_STORAGE_KEY = 'kukuchan_session_id';
-const CHAT_HISTORY_KEY = 'kukuchan_chat_history';
-
-// メッセージ評価の状態管理
-let lastMessageEvaluated = true;  // メッセージ評価状態の追跡
-
 // 状態管理
-let isSubmitting = false;
-let surveyAnswers = {
-    satisfaction: 0,
-    personalization: 0,
-    comparison: 0,
-    intention: 0,
-    age: 0,
-    gender: '',
-    occupation: '',
-    experience: '',
-    feedback: ''
+let state = {
+    isSubmitting: false,
+    lastMessageEvaluated: true,
+    currentSummary: '',
+    surveyAnswers: {
+        visitCount: '',
+        satisfaction: 0,
+        personalization: 0,
+        comparison: 0,
+        intention: 0,
+        age: 0,
+        gender: '',
+        occupation: '',
+        experience: '',
+        feedback: ''
+    },
+    sessionData: {
+        messages: [],
+        ratings: [],
+        startTime: new Date()
+    }
 };
 
+// サマリー管理の関数
+const summaryManager = {
+    getCurrentSummary() {
+        return localStorage.getItem(STORAGE_KEYS.SUMMARY) || '';
+    },
 
+    saveSummary(summary) {
+        localStorage.setItem(STORAGE_KEYS.SUMMARY, summary);
+        state.currentSummary = summary;
+        // console.log('新しい会話まとめを保存:', summary);
+    },
 
-// ローカルストレージ関連の関数
-function saveLocalChatHistory(content, type) {
-    try {
-        let history = [];
-        const savedHistory = localStorage.getItem(CHAT_HISTORY_KEY);
-        if (savedHistory) {
-            history = JSON.parse(savedHistory);
-        }
-        
-        history.push({
-            content,
-            type,
-            timestamp: new Date().toISOString()
-        });
-        
-        // 最新6件（3往復分）のみ保持
-        if (history.length > 10) {
-            history = history.slice(-10);
-        }
-        
-        localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(history));
-        console.log('ローカルストレージに保存しました:', history);
-    } catch (error) {
-        console.error('ローカル履歴の保存中にエラー:', error);
+    clearSummary() {
+        localStorage.removeItem(STORAGE_KEYS.SUMMARY);
+        state.currentSummary = '';
+        console.log('会話まとめをクリアしました');
     }
-}
-
-function getLocalChatHistory() {
-    try {
-        const history = localStorage.getItem(CHAT_HISTORY_KEY);
-        return history ? JSON.parse(history) : [];
-    } catch (error) {
-        console.error('ローカル履歴の取得中にエラー:', error);
-        return [];
-    }
-}
-
-function clearLocalChatHistory() {
-    localStorage.removeItem(CHAT_HISTORY_KEY);
-    console.log('ローカル履歴をクリアしました');
-}
+};
 
 // セッション管理の関数
 function getOrCreateSessionId(forceNew = false) {
-    // 新しいセッションを強制的に作成する場合
     if (forceNew) {
-        // まずローカルストレージのチャット履歴をクリア
-        clearLocalChatHistory();
-        
+        summaryManager.clearSummary();
         const newSessionId = 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-        sessionStorage.setItem(SESSION_STORAGE_KEY, newSessionId);
+        sessionStorage.setItem(STORAGE_KEYS.SESSION, newSessionId);
         document.cookie = `sessionId=${newSessionId}; path=/`;
+        // セッションデータもリセット
+        state.sessionData = {
+            messages: [],
+            ratings: [],
+            startTime: new Date()
+        };
         console.log("新しいセッションIDを生成:", newSessionId);
         return newSessionId;
     }
 
-    let sessionId = sessionStorage.getItem(SESSION_STORAGE_KEY);
-    
+    let sessionId = sessionStorage.getItem(STORAGE_KEYS.SESSION);
     if (!sessionId) {
-        // 新しいセッションIDが必要な場合も履歴をクリア
-        clearLocalChatHistory();
-        
+        summaryManager.clearSummary();
         sessionId = 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-        sessionStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+        sessionStorage.setItem(STORAGE_KEYS.SESSION, sessionId);
         document.cookie = `sessionId=${sessionId}; path=/`;
         console.log("新しいセッションIDを生成:", sessionId);
-    } else {
-        console.log("既存のセッションIDを使用:", sessionId);
     }
     
     return sessionId;
-}
-
-// メッセージ追加関数
-function addMessage(content, type) {
-    const messageDiv = document.createElement("div");
-    messageDiv.className = type === "user" ? "user-message" : "ai-message";
-    messageDiv.textContent = content;
-    chatContainer.appendChild(messageDiv);
-
-    // ローカルストレージに保存
-    saveLocalChatHistory(content, type);
-
-    if (type === "ai") {
-        lastMessageEvaluated = false; // AI応答時に評価状態をリセット
-        const ratingContainer = createRatingContainer();
-        const ratingText = createRatingText();
-        const buttonsContainer = createButtonsContainer();
-        const { goodBtn, badBtn } = createRatingButtons();
-
-        buttonsContainer.appendChild(goodBtn);
-        buttonsContainer.appendChild(badBtn);
-        ratingContainer.appendChild(ratingText);
-        ratingContainer.appendChild(buttonsContainer);
-        chatContainer.appendChild(ratingContainer);
-
-        // 入力を無効化
-        questionInput.disabled = true;
-        sendButton.disabled = true;
-    }
-
-    chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
 // レーティング関連の関数
@@ -165,13 +118,6 @@ function createRatingContainer() {
     `;
     return container;
 }
-
-
-
-
-
-
-
 
 function createRatingText() {
     const text = document.createElement("div");
@@ -198,6 +144,18 @@ function createRatingButtons() {
     const goodBtn = document.createElement("button");
     const badBtn = document.createElement("button");
 
+    const buttonStyle = `
+        display: flex;
+        align-items: center;
+        padding: 8px 16px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background: white;
+        cursor: pointer;
+        color: #333;
+        transition: all 0.2s;
+    `;
+
     goodBtn.innerHTML = `
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
@@ -210,18 +168,6 @@ function createRatingButtons() {
             <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
         </svg>
         <span style="margin-left: 5px;">Bad</span>
-    `;
-
-    const buttonStyle = `
-        display: flex;
-        align-items: center;
-        padding: 8px 16px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        background: white;
-        cursor: pointer;
-        color: #333;
-        transition: all 0.2s;
     `;
 
     goodBtn.style.cssText = buttonStyle;
@@ -261,10 +207,72 @@ function setupRatingButtonEvents(goodBtn, badBtn) {
     badBtn.onclick = async () => await handleRating('bad', content, badBtn, goodBtn);
 }
 
-// メッセージ送信関数
+
+
+
+// テキストエリアの自動調整
+document.addEventListener("DOMContentLoaded", () => {
+    const textarea = document.getElementById("questionInput");
+
+    textarea.addEventListener("input", function () {
+        this.style.height = "auto"; // 高さをリセット
+        this.style.height = this.scrollHeight + "px"; // 必要な高さに設定
+    });
+});
+
+
+
+
+
+// メッセージ追加関数
+function addMessage(content, type, messageType = null) {  // messageType パラメータを追加
+    const messageDiv = document.createElement("div");
+    messageDiv.className = type === "user" ? "user-message" : "ai-message";
+    messageDiv.textContent = type === "ai" ? JSON.parse(content).message : content;  // AI の場合は message を取り出す
+    chatContainer.appendChild(messageDiv);
+
+    // セッションデータに追加（分類結果も含める）
+    const messageData = {
+        content: content,
+        type: type,
+        timestamp: new Date()
+    };
+
+    if (type === "ai") {
+        try {
+            const parsedContent = JSON.parse(content);
+            messageData.messageType = parsedContent.messageType;  // 分類結果を保存
+        } catch (e) {
+            console.log("メッセージのパースに失敗:", e);
+        }
+    }
+
+    state.sessionData.messages.push(messageData);
+
+    if (type === "ai") {
+        state.lastMessageEvaluated = false;
+        const ratingContainer = createRatingContainer();
+        const ratingText = createRatingText();
+        const buttonsContainer = createButtonsContainer();
+        const { goodBtn, badBtn } = createRatingButtons();
+
+        buttonsContainer.appendChild(goodBtn);
+        buttonsContainer.appendChild(badBtn);
+        ratingContainer.appendChild(ratingText);
+        ratingContainer.appendChild(buttonsContainer);
+        chatContainer.appendChild(ratingContainer);
+
+        questionInput.disabled = true;
+        sendButton.disabled = true;
+    }
+
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// メッセージ送信関数を修正
 async function sendMessage() {
-    if (isSubmitting || !lastMessageEvaluated) {
-        if (!lastMessageEvaluated) {
+    if (state.isSubmitting || !state.lastMessageEvaluated) {
+        if (!state.lastMessageEvaluated) {
             alert("前の回答の評価をお願いします。");
         }
         return;
@@ -276,25 +284,18 @@ async function sendMessage() {
         return;
     }
 
-    isSubmitting = true;
+    state.isSubmitting = true;
     questionInput.disabled = true;
     sendButton.disabled = true;
+    loadingState.style.display = "flex";
 
     try {
         const sessionId = getOrCreateSessionId();
-        
-        // メッセージを表示
         addMessage(message, "user");
-
-        // 会話履歴を取得
-        const history = getLocalChatHistory();
-        const conversationHistory = history
-            .map(msg => `${msg.type === 'user' ? 'ユーザー' : 'ククちゃん'}: ${msg.content}`)
-            .join('\n');
-
-        // Firebaseにも保存
         await saveMessage(message, "user", sessionId);
 
+        const currentSummary = summaryManager.getCurrentSummary();
+        
         const response = await fetch(apiUrl, {
             method: "POST",
             headers: {
@@ -303,7 +304,7 @@ async function sendMessage() {
             },
             body: JSON.stringify({ 
                 userMessage: message,
-                conversationHistory: conversationHistory
+                conversationSummary: currentSummary
             })
         });
 
@@ -312,38 +313,58 @@ async function sendMessage() {
         }
 
         const data = await response.json();
-        addMessage(data.reply, "ai");
-        await saveMessage(data.reply, "ai", sessionId);
+        
+        if (data.summary) {
+            summaryManager.saveSummary(data.summary);
+        }
+
+        // AIの返答を保存する時に分類結果も含める
+        const aiMessageContent = {
+            message: data.reply,
+            messageType: data.type, // 分類結果を追加
+            timestamp: new Date().toISOString()
+        };
+
+        const aiMessageString = JSON.stringify(aiMessageContent);
+        addMessage(aiMessageString, "ai");  // 文字列化したメッセージを渡す
+        await saveMessage(aiMessageString, "ai", sessionId);
+
+        // 成功した場合のみ入力をクリア
+        questionInput.value = "";
 
     } catch (error) {
         console.error("チャットフロー内でエラー:", error);
+       
+        alert("エラーが発生しました。もう一度お試しください。");
+
         addMessage("エラーが発生しました。もう一度お試しください。", "ai");
     } finally {
-        isSubmitting = false;
-        questionInput.value = "";
-        // 注意: ここではinput/buttonを有効化しない（評価待ち）
+        state.isSubmitting = false;
+        questionInput.disabled = false;
+        sendButton.disabled = false;
+        loadingState.style.display = "none";
     }
 }
-
-
 // 評価処理関数
 async function handleRating(rating, content, activeBtn, inactiveBtn) {
     try {
         const sessionId = getOrCreateSessionId();
-        await saveMessage(JSON.stringify({
+        const ratingData = {
             rating: rating,
             message: content,
             timestamp: new Date().toISOString()
-        }), "rating", sessionId);
+        };
+
+        // セッションデータに追加
+        state.sessionData.ratings.push(ratingData);
+
+        await saveMessage(JSON.stringify(ratingData), "rating", sessionId);
         
         const container = activeBtn.closest('.rating-container');
-        
-        // 評価コンテナを最小化したものに置き換え
         const minimizedRating = createMinimizedRating(rating);
         container.parentNode.replaceChild(minimizedRating, container);
         
-        // 入力を有効化
-        lastMessageEvaluated = true;
+        state.lastMessageEvaluated = true;
         questionInput.disabled = false;
         sendButton.disabled = false;
         
@@ -353,69 +374,76 @@ async function handleRating(rating, content, activeBtn, inactiveBtn) {
     }
 }
 
-// チャット終了関数
-function endChat() {
-    if (!surveyForm) {
-        console.error("アンケートフォームが見つかりません");
-        return;
-    }
+// アンケートのリセット処理
+function resetSurveySelections() {
+    // チャット関連の評価をリセット（毎回リセットする項目）
+    const resetTargets = [
+        'satisfaction',
+        'personalization',
+        'comparison',
+        'intention',
+        'visitCount'
+    ];
 
-    questionInput.disabled = true;
-    sendButton.disabled = true;
-    surveyForm.style.display = 'block';
-    surveyForm.scrollIntoView({ behavior: 'smooth' });
+    resetTargets.forEach(name => {
+        const radioButtons = document.querySelectorAll(`input[name="${name}"]`);
+        radioButtons.forEach(radio => {
+            radio.checked = false;
+        });
+        state.surveyAnswers[name] = 0;
+    });
+
+    if (feedbackTextarea) {
+        feedbackTextarea.value = '';
+        state.surveyAnswers.feedback = '';
+    }
 }
 
 // アンケート関連の関数
 function setupRatingButtons() {
-    console.log("評価ボタンのセットアップを開始");
-
     const buttonGroups = [
-        { buttons: satisfactionButtons, name: 'satisfaction', label: '満足度' },
-        { buttons: personalizedButtons, name: 'personalization', label: '個別化された回答' },
-        { buttons: comparisonButtons, name: 'comparison', label: '比較' },
-        { buttons: intentionButtons, name: 'intention', label: '意図の理解' },
-        { buttons: ageButtons, name: 'age', label: '年代' },
-        { buttons: genderButtons, name: 'gender', label: '性別' },
-        { buttons: occupationButtons, name: 'occupation', label: '職業' },
-        { buttons: experienceButtons, name: 'experience', label: '経験年数' }
+        { buttons: visitCountButtons, name: 'visitCount' },
+        { buttons: satisfactionButtons, name: 'satisfaction' },
+        { buttons: personalizedButtons, name: 'personalization' },
+        { buttons: comparisonButtons, name: 'comparison' },
+        { buttons: intentionButtons, name: 'intention' },
+        { buttons: ageButtons, name: 'age' },
+        { buttons: genderButtons, name: 'gender' },
+        { buttons: occupationButtons, name: 'occupation' },
+        { buttons: experienceButtons, name: 'experience' }
     ];
 
     buttonGroups.forEach(group => {
         group.buttons.forEach(button => {
             button.addEventListener('change', function() {
-                surveyAnswers[group.name] = this.value;
-                console.log(`${group.label}の評価を更新:`, surveyAnswers[group.name]);
+                state.surveyAnswers[group.name] = this.value;
             });
         });
     });
 
-    // フィードバックテキストエリアのイベントリスナー
     if (feedbackTextarea) {
         feedbackTextarea.addEventListener('input', function() {
-            surveyAnswers.feedback = this.value.trim();
+            state.surveyAnswers.feedback = this.value.trim();
         });
     }
 }
 
 async function submitSurvey(event) {
     event.preventDefault();
-    console.log("アンケート送信処理を開始");
 
     const unansweredCategories = [];
-    if (surveyAnswers.satisfaction === 0) unansweredCategories.push('満足度');
-    if (surveyAnswers.personalization === 0) unansweredCategories.push('個別化された回答');
-    if (surveyAnswers.comparison === 0) unansweredCategories.push('比較');
-    if (surveyAnswers.intention === 0) unansweredCategories.push('意図の理解');
-    if (surveyAnswers.age === 0) unansweredCategories.push('年代');
-    if (!surveyAnswers.gender) unansweredCategories.push('性別');
-    if (!surveyAnswers.occupation) unansweredCategories.push('職業');
-    if (!surveyAnswers.experience) unansweredCategories.push('経験年数');
+    if (!state.surveyAnswers.visitCount) unansweredCategories.push('利用回数');
+    if (state.surveyAnswers.satisfaction === 0) unansweredCategories.push('満足度');
+    if (state.surveyAnswers.personalization === 0) unansweredCategories.push('個別化された回答');
+    if (state.surveyAnswers.comparison === 0) unansweredCategories.push('比較');
+    if (state.surveyAnswers.intention === 0) unansweredCategories.push('意図の理解');
+    if (state.surveyAnswers.age === 0) unansweredCategories.push('年代');
+    if (!state.surveyAnswers.gender) unansweredCategories.push('性別');
+    if (!state.surveyAnswers.occupation) unansweredCategories.push('職業');
+    if (!state.surveyAnswers.experience) unansweredCategories.push('経験年数');
 
     if (unansweredCategories.length > 0) {
-        const message = `以下の項目が未回答です：\n${unansweredCategories.join('\n')}`;
-        console.log("未回答項目があります:", message);
-        alert(message);
+        alert(`以下の項目が未回答です：\n${unansweredCategories.join('\n')}`);
         return;
     }
 
@@ -424,25 +452,107 @@ async function submitSurvey(event) {
         submitSurveyButton.textContent = '送信中...';
 
         const sessionId = getOrCreateSessionId();
-        const surveyData = {
-            timestamp: new Date().toISOString(),
-            answers: {
-                satisfaction: surveyAnswers.satisfaction,
-                personalization: surveyAnswers.personalization,
-                comparison: surveyAnswers.comparison,
-                intention: surveyAnswers.intention,
-                age: surveyAnswers.age,
-                gender: surveyAnswers.gender,
-                occupation: surveyAnswers.occupation,
-                experience: surveyAnswers.experience,
-                feedback: surveyAnswers.feedback
+
+        // メッセージと分類結果を含むチャット履歴の作成
+        const enhancedChatHistory = state.sessionData.messages.map(msg => {
+            if (msg.type === "ai") {
+                try {
+                    const messageContent = JSON.parse(msg.content);
+                    return {
+                        content: messageContent.message,
+                        type: msg.type,
+                        timestamp: msg.timestamp,
+                        messageType: messageContent.messageType || "unknown",
+                        classification: {
+                            type: messageContent.messageType,
+                            timestamp: msg.timestamp
+                        }
+                    };
+                } catch (e) {
+                    console.log("AIメッセージのパースに失敗:", e);
+                    return {
+                        ...msg,
+                        messageType: "unknown"
+                    };
+                }
+            }
+            return {
+                ...msg,
+                messageType: "user"
+            };
+        });
+
+        // メッセージ分類の集計
+        const classificationCounts = enhancedChatHistory.reduce((acc, msg) => {
+            if (msg.messageType && msg.messageType !== "user") {
+                acc[msg.messageType] = (acc[msg.messageType] || 0) + 1;
+            }
+            return acc;
+        }, {});
+
+        // 会話の詳細な統計情報
+        const conversationStats = {
+            messageCount: {
+                total: enhancedChatHistory.length,
+                user: enhancedChatHistory.filter(m => m.type === "user").length,
+                ai: enhancedChatHistory.filter(m => m.type === "ai").length
             },
-            sessionId: sessionId
+            classifications: classificationCounts,
+            ratingsStats: {
+                total: state.sessionData.ratings.length,
+                good: state.sessionData.ratings.filter(r => r.rating === "good").length,
+                bad: state.sessionData.ratings.filter(r => r.rating === "bad").length
+            },
+            timing: {
+                startTime: state.sessionData.startTime.toISOString(),
+                endTime: new Date().toISOString(),
+                durationSeconds: Math.round((new Date() - state.sessionData.startTime) / 1000)
+            }
         };
 
-        console.log("Firebaseに送信するデータ:", surveyData);
+        // 完全なセッションサマリーデータの作成
+
+        const summaryData = {
+            sessionId: sessionId,
+            // チャット履歴（分類結果を含む）
+            chatHistory: state.sessionData.messages.map(msg => {
+                if (msg.type === "ai") {
+                    try {
+                        const messageContent = JSON.parse(msg.content);
+                        return {
+                            content: messageContent.message,
+                            type: msg.type,
+                            timestamp: msg.timestamp,
+                            messageType: messageContent.messageType || "unknown",
+                        };
+                    } catch (e) {
+                        return msg;
+                    }
+                }
+                return msg;
+            }),
+            
+            // チャットの評価履歴
+            ratings: state.sessionData.ratings,
+            conversationSummary: summaryManager.getCurrentSummary(),
+            // アンケートの回答
+            surveyAnswers: {
+                ...state.surveyAnswers,
+                submitTimestamp: new Date().toISOString() // アンケート送信時刻
+            }
+        };
+
+        // アンケートデータの保存
+        const surveyData = {
+            timestamp: new Date().toISOString(),
+            sessionId: sessionId,
+            answers: { ...state.surveyAnswers },
+            sessionStats: conversationStats
+        };
+
+        // データの保存
         await saveMessage(JSON.stringify(surveyData), "survey", sessionId);
-        console.log("Firebaseへの送信完了");
+        await saveSummaryData(sessionId, summaryData);
 
         alert("アンケートにご協力いただき、ありがとうございました。");
         resetSurveyUI();
@@ -462,27 +572,26 @@ function resetSurveyUI() {
     chatContainer.innerHTML = '';
     questionInput.disabled = false;
     sendButton.disabled = false;
-    
-    document.querySelectorAll('.selected').forEach(button => {
-        button.classList.remove('selected');
-        button.style.backgroundColor = '';
-    });
 
-    // フィードバックテキストエリアのリセット
-    if (feedbackTextarea) {
-        feedbackTextarea.value = '';
-    }
+    // チャット評価関連のみリセット
+    resetSurveySelections();
 
-    surveyAnswers = {
+    // 個人情報を保持したまま状態を更新
+    const preservedInfo = {
+        age: state.surveyAnswers.age,
+        gender: state.surveyAnswers.gender,
+        occupation: state.surveyAnswers.occupation,
+        experience: state.surveyAnswers.experience
+    };
+
+    state.surveyAnswers = {
+        visitCount: '',
         satisfaction: 0,
         personalization: 0,
         comparison: 0,
         intention: 0,
-        age: 0,
-        gender: '',
-        occupation: '',
-        experience: '',
-        feedback: ''
+        feedback: '',
+        ...preservedInfo
     };
 
     getOrCreateSessionId(true);
@@ -491,42 +600,37 @@ function resetSurveyUI() {
 function resetChat() {
     if (confirm("チャット履歴をリセットしてもよろしいですか？")) {
         chatContainer.innerHTML = "";
-        clearLocalChatHistory();
+        summaryManager.clearSummary();
         getOrCreateSessionId(true);
-        lastMessageEvaluated = true; // 評価状態もリセット
+        state.lastMessageEvaluated = true;
     }
 }
 
-// チャット履歴読み込み関数
-async function loadChatHistory() {
-    const sessionId = getOrCreateSessionId();
-    try {
-        console.log("チャット履歴を読み込み中...");
-        const history = await getChatHistory(sessionId);
-
-        if (history && history.length > 0) {
-            history.forEach(message => {
-                if (message.type !== 'rating' && message.type !== 'survey') {
-                    addMessage(message.content, message.type);
-                }
-            });
-        }
-    } catch (error) {
-        console.error("チャット履歴の読み込みエラー:", error);
+function endChat() {
+    if (!surveyForm) {
+        console.error("アンケートフォームが見つかりません");
+        return;
     }
+
+    questionInput.disabled = true;
+    sendButton.disabled = true;
+    surveyForm.style.display = 'block';
+    surveyForm.scrollIntoView({ behavior: 'smooth' });
 }
 
-// デバッグ用関数
-function debugLocalStorage() {
-    const history = getLocalChatHistory();
-    console.log('現在のローカルストレージの内容:', history);
-}
-
-// イベントリスナーの設定
+// イベントリスナーの設定を改善
 document.addEventListener('DOMContentLoaded', () => {
     console.log("DOMContentLoaded イベント発火");
     setupRatingButtons();
-    
+    const textarea = document.getElementById("questionInput");
+
+    // テキストエリアの自動調整
+    textarea.addEventListener("input", function () {
+        this.style.height = "auto"; // 高さをリセット
+        this.style.height = this.scrollHeight + "px"; // 必要な高さに設定
+    });
+
+
     if (sendButton) {
         sendButton.addEventListener("click", sendMessage);
         console.log("送信ボタンのリスナーを設定");
@@ -538,9 +642,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (questionInput) {
-        questionInput.addEventListener("keypress", (e) => {
+        // Enterキーの処理を変更
+        questionInput.addEventListener("keydown", (e) => {
             if (e.key === "Enter") {
-                sendMessage();
+                // Ctrl+Enterで送信
+                if (e.ctrlKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
             }
         });
         console.log("入力フィールドのリスナーを設定");
@@ -549,15 +658,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (endChatButton) {
         endChatButton.addEventListener("click", endChat);
         console.log("終了ボタンのリスナーを設定");
-    } else {
-        console.error("終了ボタンが見つかりません");
     }
 
     if (submitSurveyButton) {
-        submitSurveyButton.addEventListener("click", function(event) {
-            event.preventDefault();
-            submitSurvey(event);
-        });
+        submitSurveyButton.addEventListener("click", submitSurvey);
         console.log("アンケート送信ボタンのリスナーを設定");
     }
     
@@ -570,28 +674,17 @@ window.addEventListener('load', () => {
     
     if (!document.hidden) {
         getOrCreateSessionId(true);
-    }
-    loadChatHistory();
-});
-
-// visibility変更時の処理
-// document.addEventListener('visibilitychange', () => {
-//     if (!document.hidden) {
-//         console.log("タブがアクティブになりました");
-//         getOrCreateSessionId(true);
-//         chatContainer.innerHTML = '';
-//         loadChatHistory();
-//     }
-// });
-
-// セッションストレージの変更を監視
-window.addEventListener('storage', (event) => {
-    if (event.key === SESSION_STORAGE_KEY) {
-        console.log("セッションストレージの変更を検出");
-        loadChatHistory();
+        resetSurveySelections();
     }
 });
+
+// エラーハンドリング
+window.addEventListener('error', (event) => {
+    console.error('グローバルエラー:', event.error);
+    alert("予期せぬエラーが発生しました。ページを更新してください。");
+});
+
+// エクスポート
+export { getOrCreateSessionId, resetChat, endChat };
 
 console.log("=== frontend-chat.js 読み込み完了 ===");
-
-export { getOrCreateSessionId, resetChat, endChat }
